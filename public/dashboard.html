@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم — Nodrix</title>
+<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/assets/site.webmanifest">
+<meta name="theme-color" content="#06080F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg: #06080F; --bg-panel: #0C111D; --bg-panel-2: #121A2B; --line: #212B41;
+    --text: #E8EBF5; --text-muted: #8891A6; --accent: #3B82F6; --accent-dim: #2563EB;
+    --amber: #38BDF8; --ok: #34D399; --danger: #F87171;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:'IBM Plex Sans Arabic', sans-serif; line-height:1.7; min-height:100vh;}
+  .mono{font-family:'JetBrains Mono', monospace; direction:ltr; unicode-bidi:isolate;}
+  .display{font-family:'Reem Kufi', sans-serif;}
+  a{color:var(--accent);}
+
+  nav{border-bottom:1px solid var(--line); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;}
+  .logo{display:flex; align-items:center; gap:10px; font-family:'Reem Kufi'; font-weight:700; font-size:20px;}
+  .logo .dot{width:10px; height:10px; border-radius:2px; background:var(--accent); box-shadow:0 0 14px var(--accent);}
+  .logo img.brand-mark{width:28px; height:28px; border-radius:8px; object-fit:cover;}
+  #userBar{display:flex; align-items:center; gap:14px; font-size:14px; color:var(--text-muted);}
+  #logoutBtn{background:none; border:1px solid var(--line); color:var(--text); padding:8px 16px; border-radius:6px; cursor:pointer; font-family:inherit;}
+  #logoutBtn:hover{border-color:var(--danger); color:var(--danger);}
+
+  .wrap{max-width:920px; margin:0 auto; padding:48px 24px;}
+  h1{font-family:'Reem Kufi'; font-size:28px; margin-bottom:8px;}
+  .sub{color:var(--text-muted); font-size:14.5px; margin-bottom:36px;}
+
+  /* AUTH */
+  body.auth-mode nav{display:none;}
+  .auth-split{
+    display:flex; min-height:100vh; width:100%;
+  }
+  @media (max-width:860px){ .auth-split{flex-direction:column;} }
+
+  .auth-marketing{
+    flex:1.15; position:relative; display:flex; flex-direction:column; justify-content:space-between;
+    padding:56px 64px; overflow:hidden;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(59,130,246,0.28), transparent 55%),
+      radial-gradient(circle at 80% 80%, rgba(56,189,248,0.16), transparent 50%),
+      var(--bg);
+  }
+  .auth-marketing::before{
+    content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+    background-image: radial-gradient(var(--line) 1.4px, transparent 1.4px);
+    background-size: 28px 28px; opacity:0.4;
+    mask-image: linear-gradient(to bottom, black, transparent 85%);
+  }
+  @media (max-width:860px){ .auth-marketing{padding:40px 28px 32px;} }
+  .marketing-inner{position:relative; z-index:1; max-width:460px;}
+  .marketing-headline{
+    font-family:'Reem Kufi', sans-serif; font-size:40px; line-height:1.35; margin:40px 0 18px;
+  }
+  @media (max-width:860px){ .marketing-headline{font-size:30px; margin-top:24px;} }
+  .grad-text{
+    background:linear-gradient(90deg, var(--accent), var(--amber));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .marketing-sub{color:var(--text-muted); font-size:15.5px; max-width:400px; margin-bottom:32px;}
+  .marketing-features{list-style:none;}
+  .marketing-features li{
+    display:flex; align-items:center; gap:12px; font-size:14.5px; color:var(--text);
+    padding:9px 0;
+  }
+  .marketing-features .f-icon{
+    display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px;
+    background:rgba(59,130,246,0.15); color:var(--accent); flex-shrink:0; font-size:15px;
+  }
+  .marketing-foot{position:relative; z-index:1; color:var(--text-muted); font-size:12.5px;}
+
+  .auth-panel{
+    flex:1; display:flex; align-items:center; justify-content:center; padding:40px 24px;
+    background:var(--bg);
+  }
+  .auth-card{
+    width:100%; max-width:400px; background:var(--bg-panel); border:1px solid var(--line);
+    border-radius:16px; padding:36px;
+  }
+  .auth-title{font-family:'Reem Kufi'; font-size:24px; margin-bottom:6px; text-align:center;}
+  .auth-subtitle{color:var(--text-muted); font-size:14px; text-align:center; margin-bottom:26px;}
+  .tabs{display:flex; gap:4px; background:var(--bg-panel-2); border-radius:8px; padding:4px; margin-bottom:24px;}
+  .tab{flex:1; text-align:center; padding:10px; border-radius:6px; cursor:pointer; font-size:14px; color:var(--text-muted);}
+  .tab.active{background:var(--accent); color:#fff; font-weight:700;}
+  label{display:block; font-size:13px; color:var(--text-muted); margin:14px 0 6px;}
+  .input-wrap{position:relative;}
+  .input-wrap .i-icon{
+    position:absolute; top:50%; transform:translateY(-50%); right:14px;
+    color:var(--text-muted); display:flex; pointer-events:none;
+  }
+  .input-wrap input{padding-right:40px;}
+  .input-wrap .toggle-pass{
+    position:absolute; top:50%; transform:translateY(-50%); left:14px;
+    color:var(--text-muted); cursor:pointer; background:none; border:none; display:flex; padding:0;
+  }
+  input{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+    color:var(--text); font-family:'IBM Plex Sans Arabic'; font-size:14.5px;
+  }
+  input:focus{outline:none; border-color:var(--accent);}
+  .btn{
+    width:100%; background:var(--accent); color:#fff; border:none; padding:13px; border-radius:8px;
+    font-weight:700; font-size:15px; cursor:pointer; margin-top:22px; font-family:inherit;
+  }
+  .btn:hover{opacity:.9;}
+  .btn.secondary{background:transparent; border:1px solid var(--line); color:var(--text); margin-top:12px;}
+  .err{color:var(--danger); font-size:13px; margin-top:12px; display:none;}
+  .err.ok-msg{color:var(--ok);}
+  .divider{display:flex; align-items:center; gap:12px; margin:22px 0 16px; color:var(--text-muted); font-size:12.5px;}
+  .divider::before, .divider::after{content:''; flex:1; height:1px; background:var(--line);}
+  .forgot-link{float:left; font-size:12.5px; color:var(--accent);}
+
+  /* PLANS */
+  .plans-row{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:56px;}
+  @media (max-width:760px){.plans-row{grid-template-columns:1fr;}}
+  .plan-card{background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:22px;}
+  .plan-card h3{font-family:'Reem Kufi'; font-size:18px; margin-bottom:4px;}
+  .plan-card .price{font-family:'JetBrains Mono'; color:var(--accent); font-size:20px; margin:10px 0; direction:ltr;}
+  .plan-card ul{list-style:none; font-size:13px; color:var(--text-muted); margin-bottom:16px;}
+  .plan-card li{padding:4px 0; font-family:'JetBrains Mono'; direction:ltr; text-align:left;}
+  .order-btn{
+    width:100%; padding:11px; background:transparent; border:1px solid var(--accent); color:var(--accent);
+    border-radius:7px; font-weight:700; cursor:pointer; font-family:inherit; font-size:14px;
+  }
+  .order-btn:hover{background:var(--accent); color:var(--bg);}
+
+  /* SERVERS */
+  .server-card{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:22px; margin-bottom:14px;
+    display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;
+  }
+  .server-info h4{font-family:'Reem Kufi'; font-size:16px; margin-bottom:8px;}
+  .server-info .row{font-size:13.5px; color:var(--text-muted); margin-bottom:4px;}
+  .server-info .row span.val{font-family:'JetBrains Mono'; color:var(--text); direction:ltr; display:inline-block;}
+  .status{padding:5px 14px; border-radius:100px; font-size:12px; font-weight:700; font-family:'JetBrains Mono'; direction:ltr;}
+  .status.ready{background:rgba(143,206,158,0.15); color:var(--ok);}
+  .status.provisioning{background:rgba(201,162,75,0.15); color:var(--accent);}
+  .status.suspended{background:rgba(191,139,62,0.18); color:var(--amber);}
+  .status.failed, .status.terminated{background:rgba(217,107,107,0.15); color:var(--danger);}
+  .renew-btn{
+    background:transparent; border:1px solid var(--amber); color:var(--amber); padding:8px 16px;
+    border-radius:7px; font-family:inherit; font-size:13px; cursor:pointer; margin-top:10px;
+  }
+  .renew-btn:hover{background:var(--amber); color:var(--bg);}
+  .empty-state{text-align:center; padding:50px 20px; color:var(--text-muted); border:1px dashed var(--line); border-radius:12px;}
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:100;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding:32px; width:100%; max-width:380px;}
+  .modal h3{font-family:'Reem Kufi'; margin-bottom:6px;}
+  .modal .sub{margin-bottom:0; font-size:13px;}
+  #checkoutMsg{font-size:13px; margin-top:14px; color:var(--text-muted); display:none;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo"><img class="brand-mark" src="/assets/logo.png" alt="Nodrix">Nodrix</div>
+  <div id="userBar"></div>
+</nav>
+
+<div id="authView" style="display:none;">
+    <div class="auth-split">
+
+      <div class="auth-marketing">
+        <div class="marketing-inner">
+          <div class="logo"><img class="brand-mark" src="/assets/logo.png" alt="Nodrix">Nodrix</div>
+          <h1 class="marketing-headline">استضافة RDP،<br><span class="grad-text">مبنية للمطورين.</span></h1>
+          <p class="marketing-sub">شغّل سيرفر Windows RDP في أقل من 5 دقايق، ادفع بفودافون كاش أو انستاباي، وتابع كل حاجة من لوحة تحكم واحدة.</p>
+          <ul class="marketing-features">
+            <li><span class="f-icon">⚡</span> تفعيل السيرفر خلال أقل من 5 دقايق</li>
+            <li><span class="f-icon">🛡</span> تفعيل الحساب بكود آمان عبر الإيميل</li>
+            <li><span class="f-icon">💳</span> دفع محلي: فودافون كاش وانستاباي</li>
+          </ul>
+        </div>
+        <div class="marketing-foot">© 2026 Nodrix — Fast Remote Infrastructure</div>
+      </div>
+
+      <div class="auth-panel">
+        <div class="auth-card">
+          <h2 class="auth-title">أهلاً بيك تاني</h2>
+          <p class="auth-subtitle">سجّل دخولك لحساب Nodrix بتاعك</p>
+
+          <div id="googleBtn" style="display:flex; justify-content:center;"></div>
+          <div class="divider"><span>أو بالإيميل</span></div>
+
+          <div class="tabs">
+            <div class="tab active" data-tab="login">تسجيل الدخول</div>
+            <div class="tab" data-tab="signup">حساب جديد</div>
+          </div>
+
+          <form id="loginForm">
+            <label>الإيميل</label>
+            <div class="input-wrap">
+              <input type="email" id="loginEmail" required>
+              <span class="i-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z" opacity="0"/><path d="M3 6l9 7 9-7"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+              </span>
+            </div>
+            <label>كلمة المرور <a href="#" class="forgot-link">نسيت كلمة المرور؟</a></label>
+            <div class="input-wrap">
+              <input type="password" id="loginPassword" required>
+              <button type="button" class="toggle-pass" data-target="loginPassword">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <button class="btn" type="submit">دخول</button>
+            <div class="err" id="loginErr"></div>
+          </form>
+
+          <form id="signupForm" style="display:none;">
+            <label>الإيميل</label>
+            <div class="input-wrap">
+              <input type="email" id="signupEmail" required>
+              <span class="i-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6l9 7 9-7"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+              </span>
+            </div>
+            <label>رقم الموبايل</label>
+            <input type="tel" id="signupPhone" placeholder="01xxxxxxxxx" required>
+            <label>كلمة المرور</label>
+            <div class="input-wrap">
+              <input type="password" id="signupPassword" required minlength="6">
+              <button type="button" class="toggle-pass" data-target="signupPassword">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <button class="btn" type="submit">إنشاء حساب</button>
+            <div class="err" id="signupErr"></div>
+          </form>
+
+          <p style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:22px;" id="switchTabHint">
+            جديد هنا؟ <a href="#" data-switch="signup">اعمل حساب</a>
+          </p>
+        </div>
+
+        <div class="auth-card" id="verifyCard" style="display:none;">
+          <h3 class="display" style="margin-bottom:6px; text-align:center;">أكّد إيميلك</h3>
+          <p class="sub" style="font-size:13px; margin-bottom:0; text-align:center;">بعتنالك كود مكوّن من 6 أرقام على <b id="verifyEmailLabel"></b></p>
+          <form id="verifyForm">
+            <label>كود التفعيل</label>
+            <input type="text" id="verifyCode" inputmode="numeric" maxlength="6" placeholder="------" style="text-align:center; letter-spacing:8px; font-family:'JetBrains Mono'; font-size:20px;" required>
+            <button class="btn" type="submit">تفعيل الحساب</button>
+            <div class="err" id="verifyErr"></div>
+          </form>
+          <button class="btn secondary" id="resendCodeBtn">إعادة إرسال الكود</button>
+        </div>
+
+        <div class="auth-card" id="forgotCard" style="display:none;">
+          <h3 class="display" style="margin-bottom:6px; text-align:center;">استرجاع كلمة المرور</h3>
+          <p class="sub" style="font-size:13px; margin-bottom:0; text-align:center;">هنبعتلك كود على إيميلك</p>
+
+          <form id="forgotRequestForm">
+            <label>الإيميل</label>
+            <input type="email" id="forgotEmail" required>
+            <button class="btn" type="submit">ابعت الكود</button>
+            <div class="err" id="forgotErr"></div>
+          </form>
+
+          <form id="forgotResetForm" style="display:none;">
+            <label>كود إعادة التعيين</label>
+            <input type="text" id="resetCode" inputmode="numeric" maxlength="6" placeholder="------" style="text-align:center; letter-spacing:8px; font-family:'JetBrains Mono'; font-size:20px;" required>
+            <label>كلمة المرور الجديدة</label>
+            <div class="input-wrap">
+              <input type="password" id="resetPassword" required minlength="6">
+              <button type="button" class="toggle-pass" data-target="resetPassword">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <button class="btn" type="submit">تغيير كلمة المرور</button>
+            <div class="err" id="resetErr"></div>
+          </form>
+
+          <p style="text-align:center; font-size:13px; margin-top:16px;"><a href="#" id="backToLoginLink">رجوع لتسجيل الدخول</a></p>
+        </div>
+      </div>
+
+    </div>
+</div>
+
+<div class="wrap">
+  <div id="appView" style="display:none;">
+    <h1>الباقات المتاحة</h1>
+    <p class="sub">اختار باقة وابدأ الدفع بفودافون كاش أو انستاباي.</p>
+    <div class="plans-row" id="plansRow"></div>
+
+    <h1>سيرفراتي</h1>
+    <p class="sub">كل السيرفرات النشطة وبيانات الدخول بتاعتها.</p>
+    <div id="serversList"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="checkoutModal">
+  <div class="modal">
+    <h3 class="display" id="checkoutPlanName">تأكيد الطلب</h3>
+    <p class="sub" style="color:var(--text-muted); font-size:13.5px; margin-bottom:18px;">هيتم إرسال طلب دفع لرقم محفظتك.</p>
+    <label>رقم المحفظة (فودافون كاش / انستاباي)</label>
+    <input type="tel" id="checkoutPhone" placeholder="01xxxxxxxxx">
+    <button class="btn" id="confirmCheckoutBtn">تأكيد وادفع</button>
+    <button class="btn secondary" id="cancelCheckoutBtn">إلغاء</button>
+    <div id="checkoutMsg"></div>
+  </div>
+</div>
+
+<script>
+const API = "/api";
+let token = localStorage.getItem("ns_token");
+let selectedPlan = null;
+let selectedRenewServerId = null;
+
+// ---------- Auth view wiring ----------
+function switchAuthTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  const isLogin = name === "login";
+  document.getElementById("loginForm").style.display = isLogin ? "block" : "none";
+  document.getElementById("signupForm").style.display = isLogin ? "none" : "block";
+  document.getElementById("switchTabHint").innerHTML = isLogin
+    ? 'جديد هنا؟ <a href="#" data-switch="signup">اعمل حساب</a>'
+    : 'عندك حساب؟ <a href="#" data-switch="login">سجّل دخولك</a>';
+  document.querySelector('#switchTabHint a').addEventListener("click", (e) => {
+    e.preventDefault(); switchAuthTab(e.target.dataset.switch);
+  });
+}
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => switchAuthTab(tab.dataset.tab));
+});
+document.querySelector('#switchTabHint a')?.addEventListener("click", (e) => {
+  e.preventDefault(); switchAuthTab(e.target.dataset.switch);
+});
+document.querySelectorAll(".toggle-pass").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const input = document.getElementById(btn.dataset.target);
+    input.type = input.type === "password" ? "text" : "password";
+  });
+});
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
+  const errEl = document.getElementById("loginErr");
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({email, password})
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.needsVerification) { showVerifyCard(data.email); return; }
+      errEl.textContent = data.error; errEl.style.display = "block"; return;
+    }
+    setToken(data.token);
+  } catch { errEl.textContent = "حصل خطأ، حاول تاني"; errEl.style.display = "block"; }
+});
+
+document.getElementById("signupForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("signupEmail").value;
+  const phone = document.getElementById("signupPhone").value;
+  const password = document.getElementById("signupPassword").value;
+  const errEl = document.getElementById("signupErr");
+  try {
+    const res = await fetch(`${API}/auth/signup`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({email, phone, password})
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = "block"; return; }
+    if (data.needsVerification) { showVerifyCard(data.email); return; }
+    setToken(data.token);
+  } catch { errEl.textContent = "حصل خطأ، حاول تاني"; errEl.style.display = "block"; }
+});
+
+function showVerifyCard(email) {
+  document.querySelector(".auth-card").style.display = "none";
+  document.getElementById("verifyCard").style.display = "block";
+  document.getElementById("verifyEmailLabel").textContent = email;
+  document.getElementById("verifyForm").dataset.email = email;
+}
+
+document.getElementById("verifyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = e.target.dataset.email;
+  const code = document.getElementById("verifyCode").value.trim();
+  const errEl = document.getElementById("verifyErr");
+  try {
+    const res = await fetch(`${API}/auth/verify-email`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ email, code })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = "block"; return; }
+    setToken(data.token);
+  } catch { errEl.textContent = "حصل خطأ، حاول تاني"; errEl.style.display = "block"; }
+});
+
+document.getElementById("resendCodeBtn").addEventListener("click", async () => {
+  const email = document.getElementById("verifyForm").dataset.email;
+  const errEl = document.getElementById("verifyErr");
+  errEl.style.display = "none";
+  try {
+    const res = await fetch(`${API}/auth/resend-code`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = "block"; return; }
+    errEl.style.color = "var(--ok)"; errEl.textContent = "تم إرسال كود جديد"; errEl.style.display = "block";
+  } catch { errEl.textContent = "حصل خطأ، حاول تاني"; errEl.style.display = "block"; }
+});
+
+// ---------- Forgot / reset password ----------
+document.querySelector(".forgot-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.querySelector(".auth-card").style.display = "none";
+  document.getElementById("verifyCard").style.display = "none";
+  document.getElementById("forgotCard").style.display = "block";
+});
+
+document.getElementById("backToLoginLink").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("forgotCard").style.display = "none";
+  document.getElementById("forgotRequestForm").style.display = "block";
+  document.getElementById("forgotResetForm").style.display = "none";
+  document.querySelector(".auth-card").style.display = "block";
+});
+
+document.getElementById("forgotRequestForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("forgotEmail").value;
+  const errEl = document.getElementById("forgotErr");
+  errEl.style.display = "none";
+  try {
+    const res = await fetch(`${API}/auth/forgot-password`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = "block"; return; }
+    document.getElementById("forgotResetForm").dataset.email = email;
+    document.getElementById("forgotRequestForm").style.display = "none";
+    document.getElementById("forgotResetForm").style.display = "block";
+  } catch { errEl.textContent = "حصل خطأ، حاول تاني"; errEl.style.display = "block"; }
+});
+
+document.getElementById("forgotResetForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = e.target.dataset.email;
+  const code = document.getElementById("resetCode").value.trim();
+  const newPassword = document.getElementById("resetPassword").value;
+  const errEl = document.getElementById("resetErr");
+  errEl.style.display = "none";
+  try {
+    const res = await fetch(`${API}/auth/reset-password`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ email, code, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = "block"; return; }
+    setToken(data.token);
+  } catch { errEl.textContent = "حصل خطأ، حاول تاني"; errEl.style.display = "block"; }
+});
+
+// ---------- Google Sign-In ----------
+async function initGoogleSignIn() {
+  try {
+    const res = await fetch(`${API}/config`);
+    const { googleClientId } = await res.json();
+    if (!googleClientId || !window.google) return;
+
+    google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: handleGoogleCredential,
+    });
+    google.accounts.id.renderButton(document.getElementById("googleBtn"), {
+      theme: "filled_black", size: "large", shape: "pill", text: "continue_with", locale: "ar", width: 328,
+    });
+  } catch { /* Google sign-in unavailable — password form still works */ }
+}
+
+async function handleGoogleCredential(response) {
+  const errEl = document.getElementById("loginErr");
+  try {
+    const res = await fetch(`${API}/auth/google`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = "block"; return; }
+    setToken(data.token);
+  } catch { errEl.textContent = "تعذر تسجيل الدخول بجوجل، حاول تاني"; errEl.style.display = "block"; }
+}
+
+window.addEventListener("load", initGoogleSignIn);
+
+function setToken(t) {
+  token = t;
+  localStorage.setItem("ns_token", t);
+  render();
+}
+
+function logout() {
+  token = null;
+  localStorage.removeItem("ns_token");
+  render();
+}
+
+// ---------- App view ----------
+async function authedFetch(url, opts = {}) {
+  opts.headers = { ...(opts.headers || {}), Authorization: `Bearer ${token}` };
+  return fetch(url, opts);
+}
+
+async function loadPlans() {
+  const res = await fetch(`${API}/plans`);
+  const plans = await res.json();
+  const row = document.getElementById("plansRow");
+  row.innerHTML = plans.map(p => `
+    <div class="plan-card">
+      <h3>${p.name}</h3>
+      <div class="price">${p.priceEGP} ج.م / شهريًا</div>
+      <ul>
+        <li>${p.vcpu} vCPU</li>
+        <li>${p.ramGB} GB RAM</li>
+        <li>${p.storageGB} GB SSD</li>
+      </ul>
+      <button class="order-btn" data-plan="${p.id}" data-name="${p.name}">اطلب الباقة</button>
+    </div>
+  `).join("");
+
+  row.querySelectorAll(".order-btn").forEach(btn => {
+    btn.addEventListener("click", () => openCheckout(btn.dataset.plan, btn.dataset.name));
+  });
+}
+
+function openCheckout(planId, planName, renewServerId) {
+  selectedPlan = planId;
+  selectedRenewServerId = renewServerId || null;
+  document.getElementById("checkoutPlanName").textContent = renewServerId
+    ? `تجديد اشتراك السيرفر`
+    : `طلب باقة ${planName}`;
+  document.getElementById("checkoutMsg").style.display = "none";
+  document.getElementById("checkoutModal").classList.add("open");
+}
+
+document.getElementById("cancelCheckoutBtn").addEventListener("click", () => {
+  selectedRenewServerId = null;
+  document.getElementById("checkoutModal").classList.remove("open");
+});
+
+document.getElementById("confirmCheckoutBtn").addEventListener("click", async () => {
+  const phoneNumber = document.getElementById("checkoutPhone").value;
+  const msg = document.getElementById("checkoutMsg");
+  if (!phoneNumber) { return; }
+  msg.style.display = "block";
+  msg.textContent = "جاري إرسال طلب الدفع...";
+  try {
+    const res = await authedFetch(`${API}/checkout`, {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ planId: selectedPlan, phoneNumber, renewServerId: selectedRenewServerId })
+    });
+    const data = await res.json();
+    if (!res.ok) { msg.textContent = data.error || "حصل خطأ في الدفع"; return; }
+    if (data.redirectUrl) {
+      msg.textContent = "افتح رابط الدفع في التاب الجديد لتأكيد العملية...";
+      window.open(data.redirectUrl, "_blank");
+    } else {
+      msg.textContent = "تم إرسال طلب الدفع لمحفظتك، أكّده من تطبيق الموبايل.";
+    }
+    setTimeout(loadServers, 4000);
+  } catch { msg.textContent = "تعذر الاتصال بالسيرفر"; }
+});
+
+async function loadServers() {
+  const res = await authedFetch(`${API}/servers`);
+  if (!res.ok) return;
+  const servers = await res.json();
+  const list = document.getElementById("serversList");
+
+  if (servers.length === 0) {
+    list.innerHTML = `<div class="empty-state">لسه مفيش سيرفرات — اطلب باقة من فوق وهتظهر هنا.</div>`;
+    return;
+  }
+
+  const statusLabel = { ready: "شغال", provisioning: "بيتجهز", suspended: "متوقف مؤقتًا", failed: "فشل", terminated: "اتمسح" };
+  const planNames = { starter: "Starter", pro: "Pro", business: "Business" };
+
+  list.innerHTML = servers.map(s => `
+    <div class="server-card">
+      <div class="server-info">
+        <h4>سيرفر ${planNames[s.planId] || s.planId}</h4>
+        ${s.status === "ready" ? `
+          <div class="row">IP: <span class="val">${s.publicIp}</span></div>
+          <div class="row">User: <span class="val">${s.username}</span></div>
+          <div class="row">Pass: <span class="val">${s.password}</span></div>
+        ` : s.status === "suspended" ? `<div class="row">الاشتراك خلص وتم إيقاف السيرفر مؤقتًا — جدد قبل ما يتمسح نهائي</div>`
+          : s.status === "terminated" ? `<div class="row">اتمسح نهائي بعد ما فترة السماح خلصت</div>`
+          : `<div class="row">بيتجهز... هيبان هنا لما يخلص</div>`}
+        <div class="row">ينتهي في: <span class="val">${new Date(s.expiresAt).toLocaleDateString('ar-EG')}</span></div>
+        ${s.status === "suspended" ? `<button class="renew-btn" onclick="openCheckout('${s.planId}','${planNames[s.planId] || s.planId}','${s.id}')">جدد الاشتراك دلوقتي</button>` : ""}
+      </div>
+      <span class="status ${s.status}">${statusLabel[s.status] || s.status}</span>
+    </div>
+  `).join("");
+}
+
+document.getElementById("logoutBtn")?.addEventListener("click", logout);
+
+function render() {
+  const authView = document.getElementById("authView");
+  const appView = document.getElementById("appView");
+  const userBar = document.getElementById("userBar");
+
+  if (token) {
+    document.body.classList.remove("auth-mode");
+    authView.style.display = "none";
+    appView.style.display = "block";
+    userBar.innerHTML = `<button id="logoutBtn">تسجيل خروج</button>`;
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+    loadPlans();
+    loadServers();
+  } else {
+    document.body.classList.add("auth-mode");
+    authView.style.display = "block";
+    appView.style.display = "none";
+    userBar.innerHTML = "";
+  }
+}
+
+render();
+</script>
+
+</body>
+</html>
