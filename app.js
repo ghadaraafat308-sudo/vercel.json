@@ -64,3 +64,5 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 app.get("/api/config", (req, res) => {
   res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || "" });
 });
+
+export default app;
