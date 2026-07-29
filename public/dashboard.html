@@ -578,7 +578,7 @@ document.getElementById("confirmCheckoutBtn").addEventListener("click", async ()
       msg.textContent = "افتح رابط الدفع في التاب الجديد لتأكيد العملية...";
       window.open(data.redirectUrl, "_blank");
     } else {
-      msg.textContent = "تم إرسال طلب الدفع لمحفظتك، أكّده من تطبيق الموبايل.";
+      msg.textContent = data.message || "تم إرسال طلب الدفع لمحفظتك، أكّده من تطبيق الموبايل.";
     }
     setTimeout(loadServers, 4000);
   } catch { msg.textContent = "تعذر الاتصال بالسيرفر"; }

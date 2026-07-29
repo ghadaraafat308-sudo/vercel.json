@@ -17,6 +17,7 @@ import planRoutes from "./routes/plans.js";
 import checkoutRoutes from "./routes/checkout.js";
 import webhookRoutes from "./routes/webhook.js";
 import serverRoutes from "./routes/servers.js";
+import adminRoutes from "./routes/admin.js";
 import { rateLimit } from "./services/rateLimit.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -56,6 +57,7 @@ app.use("/api/plans", planRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/servers", serverRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(express.static(path.join(__dirname, "public")));
 

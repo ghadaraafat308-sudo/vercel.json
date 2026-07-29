@@ -3,10 +3,17 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { db } from "../db.js";
 import { requireAuth } from "../services/auth.js";
-import { startWalletCheckout } from "../services/paymob.js";
 
 const router = Router();
 
+// ------------------------------------------------------------------
+// Payments are MANUAL for now: the customer submits an order, an admin
+// reviews it in /admin.html and approves it by hand (after confirming
+// the money actually arrived), which is what triggers provisioning.
+// No Paymob call happens here. To switch back to automatic payments
+// later, re-introduce the startWalletCheckout() call from
+// services/paymob.js the way it was before, inside the try block below.
+// ------------------------------------------------------------------
 router.post("/", requireAuth, async (req, res) => {
   const { planId, phoneNumber, renewServerId } = req.body;
   const plan = await db.find("plans", (p) => p.id === planId);
@@ -26,32 +33,17 @@ router.post("/", requireAuth, async (req, res) => {
     userId: user.id,
     planId: plan.id,
     amountEGP: plan.priceEGP,
-    status: "pending", // pending -> paid -> provisioned  |  failed
-    paymentProvider: "paymob",
+    status: "pending_review", // pending_review -> (admin approves) -> provisioned  |  (admin rejects) -> rejected
+    paymentProvider: "manual",
+    payerPhone: phoneNumber,
     renewServerId: renewServerId || null,
     createdAt: new Date().toISOString(),
   });
 
-  try {
-    const walletResult = await startWalletCheckout({
-      order,
-      plan,
-      phoneNumber,
-      customer: { email: user.email },
-    });
-
-    // Paymob returns a redirect URL (or USSD prompt info) the customer
-    // uses to confirm the payment on their phone.
-    res.json({
-      orderId: order.id,
-      redirectUrl: walletResult.redirect_url || null,
-      raw: walletResult,
-    });
-  } catch (err) {
-    console.error("Paymob checkout error:", err.response?.data || err.message);
-    await db.update("orders", (o) => o.id === order.id, { status: "failed" });
-    res.status(502).json({ error: "تعذر بدء عملية الدفع، حاول تاني" });
-  }
+  res.json({
+    orderId: order.id,
+    message: "استلمنا طلبك — هيتراجع ويتفعّل بعد تأكيد الدفع من فريقنا خلال وقت قصير.",
+  });
 });
 
 export default router;

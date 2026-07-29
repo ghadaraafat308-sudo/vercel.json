@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { OAuth2Client } from "google-auth-library";
 import { db } from "../db.js";
-import { signToken } from "../services/auth.js";
+import { signToken, signAdminToken } from "../services/auth.js";
 import { sendVerificationCode, sendPasswordResetCode } from "../services/notify.js";
 import { rateLimit } from "../services/rateLimit.js";
 
@@ -236,6 +236,20 @@ router.post("/google", async (req, res) => {
   }
 
   res.json({ token: signToken(user), user: { id: user.id, email: user.email, phone: user.phone } });
+});
+
+// ---------- Admin login ----------
+// Single shared password (ADMIN_PASSWORD env var) — simplest thing that
+// works for one operator. Not tied to any customer account.
+router.post("/admin-login", strictLimiter, (req, res) => {
+  const { password } = req.body;
+  if (!process.env.ADMIN_PASSWORD) {
+    return res.status(500).json({ error: "ADMIN_PASSWORD مش متظبطة على السيرفر" });
+  }
+  if (!password || password !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "كلمة المرور غلط" });
+  }
+  res.json({ token: signAdminToken() });
 });
 
 export default router;
