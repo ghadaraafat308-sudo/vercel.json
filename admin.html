@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة الأدمن — Nodrix</title>
+<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #06080F; --bg-panel: #0C111D; --bg-panel-2: #121A2B; --line: #212B41;
+    --text: #E8EBF5; --text-muted: #8891A6; --accent: #3B82F6; --accent-dim: #2563EB;
+    --ok: #34D399; --danger: #F87171; --warn: #FBBF24;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:'IBM Plex Sans Arabic', sans-serif; line-height:1.7; min-height:100vh;}
+  .mono{font-family:'JetBrains Mono', monospace; direction:ltr; unicode-bidi:isolate;}
+  .display{font-family:'Reem Kufi', sans-serif;}
+  a{color:var(--accent);}
+
+  nav{border-bottom:1px solid var(--line); padding:18px 24px; display:flex; justify-content:space-between; align-items:center;}
+  .logo{display:flex; align-items:center; gap:10px; font-family:'Reem Kufi'; font-weight:700; font-size:20px;}
+  .logo .dot{width:10px; height:10px; border-radius:2px; background:var(--warn); box-shadow:0 0 14px var(--warn);}
+  #logoutBtn{background:none; border:1px solid var(--line); color:var(--text); padding:8px 16px; border-radius:6px; cursor:pointer; font-family:inherit;}
+  #logoutBtn:hover{border-color:var(--danger); color:var(--danger);}
+
+  .wrap{max-width:1080px; margin:0 auto; padding:36px 24px;}
+  h1{font-family:'Reem Kufi'; font-size:24px; margin-bottom:24px;}
+
+  /* LOGIN */
+  #loginScreen{display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px;}
+  .login-card{background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding:36px; width:100%; max-width:360px;}
+  .login-card h2{font-family:'Reem Kufi'; margin-bottom:20px; text-align:center;}
+  label{display:block; font-size:13px; color:var(--text-muted); margin-bottom:6px;}
+  input{width:100%; background:var(--bg-panel-2); border:1px solid var(--line); border-radius:8px; padding:11px 14px; color:var(--text); font-family:inherit; font-size:15px; margin-bottom:16px;}
+  input:focus{outline:none; border-color:var(--accent);}
+  .btn{width:100%; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:12px; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer;}
+  .btn:hover{background:var(--accent-dim);}
+  .btn.small{width:auto; padding:7px 14px; font-size:13px;}
+  .btn.danger{background:var(--danger);}
+  .btn.ok{background:var(--ok); color:#06080F;}
+  .btn.ghost{background:none; border:1px solid var(--line); color:var(--text);}
+  .err{color:var(--danger); font-size:13px; margin-top:-6px; margin-bottom:14px; display:none;}
+
+  /* TABS */
+  .tabs{display:flex; gap:8px; margin-bottom:24px; border-bottom:1px solid var(--line);}
+  .tab-btn{background:none; border:none; color:var(--text-muted); padding:10px 18px; font-family:inherit; font-size:14.5px; cursor:pointer; border-bottom:2px solid transparent;}
+  .tab-btn.active{color:var(--text); border-bottom-color:var(--accent);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  table{width:100%; border-collapse:collapse; background:var(--bg-panel); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  th, td{padding:12px 14px; text-align:right; font-size:13.5px; border-bottom:1px solid var(--line);}
+  th{color:var(--text-muted); font-weight:500; background:var(--bg-panel-2);}
+  tr:last-child td{border-bottom:none;}
+  .badge{display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px;}
+  .badge.pending_review{background:rgba(251,191,36,0.15); color:var(--warn);}
+  .badge.paid, .badge.provisioning{background:rgba(59,130,246,0.15); color:var(--accent);}
+  .badge.provisioned, .badge.ready{background:rgba(52,211,153,0.15); color:var(--ok);}
+  .badge.failed, .badge.rejected{background:rgba(248,113,113,0.15); color:var(--danger);}
+  .badge.suspended{background:rgba(251,191,36,0.15); color:var(--warn);}
+  .badge.terminated{background:rgba(136,145,166,0.15); color:var(--text-muted);}
+  .row-actions{display:flex; gap:8px;}
+  .empty{color:var(--text-muted); font-size:14px; padding:24px; text-align:center;}
+  .add-server-card{background:var(--bg-panel); border:1px solid var(--line); border-radius:10px; padding:20px; margin-bottom:24px; display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;}
+  .add-server-card .field{flex:1; min-width:180px;}
+  .add-server-card label{margin-bottom:6px;}
+  .add-server-card input, .add-server-card select{margin-bottom:0;}
+  select{width:100%; background:var(--bg-panel-2); border:1px solid var(--line); border-radius:8px; padding:11px 14px; color:var(--text); font-family:inherit; font-size:15px;}
+  #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--bg-panel); border:1px solid var(--line); padding:12px 20px; border-radius:8px; font-size:14px; display:none; z-index:50;}
+</style>
+</head>
+<body class="login-mode">
+
+<div id="loginScreen">
+  <div class="login-card">
+    <h2>لوحة الأدمن</h2>
+    <form id="loginForm">
+      <label>كلمة مرور الأدمن</label>
+      <input type="password" id="adminPassword" required autofocus>
+      <div class="err" id="loginErr"></div>
+      <button class="btn" type="submit">دخول</button>
+    </form>
+  </div>
+</div>
+
+<div id="panelScreen" style="display:none;">
+  <nav>
+    <div class="logo"><span class="dot"></span> Nodrix Admin</div>
+    <button id="logoutBtn">خروج</button>
+  </nav>
+
+  <div class="wrap">
+    <h1>لوحة التحكم</h1>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="orders">الطلبات</button>
+      <button class="tab-btn" data-tab="servers">السيرفرات</button>
+      <button class="tab-btn" data-tab="users">المستخدمين</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-orders">
+      <div id="ordersTableWrap"><div class="empty">جاري التحميل...</div></div>
+    </div>
+
+    <div class="tab-panel" id="tab-servers">
+      <div class="add-server-card">
+        <div class="field">
+          <label>ضيف سيرفر يدوي لمستخدم</label>
+          <select id="addServerUser"></select>
+        </div>
+        <div class="field">
+          <label>الباقة</label>
+          <select id="addServerPlan"></select>
+        </div>
+        <div class="field">
+          <label>IP السيرفر</label>
+          <input type="text" id="addServerIp" placeholder="51.20.14.88">
+        </div>
+        <div class="field">
+          <label>اليوزر</label>
+          <input type="text" id="addServerUsername" value="Administrator">
+        </div>
+        <div class="field">
+          <label>الباسورد</label>
+          <input type="text" id="addServerPassword" placeholder="كلمة السر">
+        </div>
+        <button class="btn small" id="addServerBtn" style="width:auto;">إنشاء</button>
+      </div>
+      <div id="serversTableWrap"><div class="empty">جاري التحميل...</div></div>
+    </div>
+
+    <div class="tab-panel" id="tab-users">
+      <div id="usersTableWrap"><div class="empty">جاري التحميل...</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = "/api";
+let token = sessionStorage.getItem("nodrix_admin_token") || "";
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 3500);
+}
+
+function setLoggedIn(t) {
+  token = t;
+  sessionStorage.setItem("nodrix_admin_token", t);
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("panelScreen").style.display = "block";
+  loadAll();
+}
+
+async function adminFetch(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: { ...(opts.headers || {}), Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) {
+    sessionStorage.removeItem("nodrix_admin_token");
+    location.reload();
+    throw new Error("unauthorized");
+  }
+  return res;
+}
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const password = document.getElementById("adminPassword").value;
+  const errEl = document.getElementById("loginErr");
+  errEl.style.display = "none";
+  try {
+    const res = await fetch(`${API}/auth/admin-login`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = "block"; return; }
+    setLoggedIn(data.token);
+  } catch { errEl.textContent = "تعذر الاتصال بالسيرفر"; errEl.style.display = "block"; }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem("nodrix_admin_token");
+  location.reload();
+});
+
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+  });
+});
+
+const statusLabels = {
+  pending_review: "بانتظار المراجعة", paid: "اتدفع", provisioned: "اتفعّل", failed: "فشل", rejected: "مرفوض",
+  provisioning: "بيتجهز", ready: "شغال", suspended: "متوقف", terminated: "اتمسح",
+};
+
+function fmtDate(d) {
+  if (!d) return "—";
+  return new Date(d).toLocaleString("ar-EG", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+async function loadOrders() {
+  const res = await adminFetch("/admin/orders");
+  const orders = await res.json();
+  const wrap = document.getElementById("ordersTableWrap");
+  if (orders.length === 0) { wrap.innerHTML = `<div class="empty">مفيش طلبات لسه</div>`; return; }
+
+  wrap.innerHTML = `<table><thead><tr>
+    <th>العميل</th><th>الباقة</th><th>المبلغ</th><th>رقم المحفظة</th><th>الحالة</th><th>التاريخ</th><th></th>
+  </tr></thead><tbody>
+    ${orders.map((o) => `
+      <tr>
+        <td>${o.userEmail || o.userId}</td>
+        <td>${o.planName}${o.renewServerId ? " (تجديد)" : ""}</td>
+        <td class="mono">${o.amountEGP} ج.م</td>
+        <td class="mono">${o.payerPhone || "—"}</td>
+        <td><span class="badge ${o.status}">${statusLabels[o.status] || o.status}</span></td>
+        <td class="mono">${fmtDate(o.createdAt)}</td>
+        <td>
+          ${o.status === "pending_review" ? `
+            <div class="row-actions">
+              <button class="btn small ok" onclick="approveOrderManual('${o.id}')">قبول + إدخال IP</button>
+              <button class="btn small danger" onclick="rejectOrder('${o.id}')">رفض</button>
+            </div>` : ""}
+        </td>
+      </tr>
+    `).join("")}
+  </tbody></table>`;
+}
+
+async function approveOrderManual(id) {
+  const publicIp = prompt("الـ IP بتاع السيرفر (مثال: 51.20.14.88):");
+  if (!publicIp) return;
+  const username = prompt("اليوزر (اكتب Administrator لو مش متأكد):", "Administrator");
+  if (!username) return;
+  const password = prompt("الباسورد:");
+  if (!password) return;
+
+  const res = await adminFetch(`/admin/orders/${id}/approve-manual`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ publicIp, username, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتقبل الطلب واتحفظت بيانات السيرفر");
+  loadOrders(); loadServers();
+}
+
+async function approveOrder(id) {
+  const res = await adminFetch(`/admin/orders/${id}/approve`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتقبل الطلب وبدأ التجهيز");
+  loadOrders(); loadServers();
+}
+
+async function rejectOrder(id) {
+  const res = await adminFetch(`/admin/orders/${id}/reject`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اترفض الطلب");
+  loadOrders();
+}
+
+async function loadServers() {
+  const res = await adminFetch("/admin/servers");
+  const servers = await res.json();
+  const wrap = document.getElementById("serversTableWrap");
+  if (servers.length === 0) { wrap.innerHTML = `<div class="empty">مفيش سيرفرات لسه</div>`; return; }
+
+  wrap.innerHTML = `<table><thead><tr>
+    <th>العميل</th><th>الباقة</th><th>IP</th><th>الحالة</th><th>ينتهي</th><th></th>
+  </tr></thead><tbody>
+    ${servers.map((s) => `
+      <tr>
+        <td>${s.userEmail || s.userId}</td>
+        <td>${s.planName}</td>
+        <td class="mono">${s.publicIp || "—"}</td>
+        <td><span class="badge ${s.status}">${statusLabels[s.status] || s.status}</span></td>
+        <td class="mono">${fmtDate(s.expiresAt)}</td>
+        <td>
+          <div class="row-actions">
+            ${s.status === "ready" ? `<button class="btn small ghost" onclick="stopServerAction('${s.id}')">إيقاف</button>` : ""}
+            ${s.status === "suspended" ? `<button class="btn small ok" onclick="startServerAction('${s.id}')">تشغيل</button>` : ""}
+            ${s.status !== "terminated" ? `<button class="btn small danger" onclick="terminateServerAction('${s.id}')">حذف نهائي</button>` : ""}
+          </div>
+        </td>
+      </tr>
+    `).join("")}
+  </tbody></table>`;
+}
+
+async function stopServerAction(id) {
+  const res = await adminFetch(`/admin/servers/${id}/stop`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتوقف السيرفر"); loadServers();
+}
+async function startServerAction(id) {
+  showToast("جاري التشغيل...");
+  const res = await adminFetch(`/admin/servers/${id}/start`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اشتغل السيرفر"); loadServers();
+}
+async function terminateServerAction(id) {
+  if (!confirm("متأكد؟ ده هيمسح السيرفر نهائيًا من AWS ومش هيرجع تاني.")) return;
+  const res = await adminFetch(`/admin/servers/${id}/terminate`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتمسح السيرفر"); loadServers();
+}
+
+async function loadUsers() {
+  const res = await adminFetch("/admin/users");
+  const users = await res.json();
+  const wrap = document.getElementById("usersTableWrap");
+  if (users.length === 0) { wrap.innerHTML = `<div class="empty">مفيش مستخدمين لسه</div>`; return; }
+
+  wrap.innerHTML = `<table><thead><tr>
+    <th>الإيميل</th><th>الموبايل</th><th>الإيميل متفعّل؟</th><th>سجّل في</th>
+  </tr></thead><tbody>
+    ${users.map((u) => `
+      <tr>
+        <td>${u.email}</td>
+        <td class="mono">${u.phone || "—"}</td>
+        <td>${u.emailVerified ? "✅" : "❌"}</td>
+        <td class="mono">${fmtDate(u.createdAt)}</td>
+      </tr>
+    `).join("")}
+  </tbody></table>`;
+
+  const sel = document.getElementById("addServerUser");
+  sel.innerHTML = users.map((u) => `<option value="${u.id}">${u.email}</option>`).join("");
+}
+
+async function loadPlansForAddServer() {
+  const res = await fetch(`${API}/plans`);
+  const plans = await res.json();
+  const sel = document.getElementById("addServerPlan");
+  sel.innerHTML = plans.map((p) => `<option value="${p.id}">${p.name} — ${p.priceEGP} ج.م</option>`).join("");
+}
+
+document.getElementById("addServerBtn").addEventListener("click", async () => {
+  const userId = document.getElementById("addServerUser").value;
+  const planId = document.getElementById("addServerPlan").value;
+  const publicIp = document.getElementById("addServerIp").value.trim();
+  const username = document.getElementById("addServerUsername").value.trim();
+  const password = document.getElementById("addServerPassword").value.trim();
+  if (!userId || !planId) return;
+  if (!publicIp || !username || !password) return showToast("لازم تملأ IP واليوزر والباسورد");
+
+  showToast("جاري الحفظ...");
+  const res = await adminFetch("/admin/servers/add-manual", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, planId, publicIp, username, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("السيرفر اتضاف");
+  document.getElementById("addServerIp").value = "";
+  document.getElementById("addServerPassword").value = "";
+  loadServers();
+});
+
+function loadAll() {
+  loadOrders();
+  loadServers();
+  loadUsers();
+  loadPlansForAddServer();
+}
+
+if (token) setLoggedIn(token);
+</script>
+</body>
+</html>
