@@ -61,6 +61,14 @@ app.use("/api/admin", adminRoutes);
 
 app.use(express.static(path.join(__dirname, "public")));
 
+// Vercel's serverless bundler doesn't always pick up every file inside a
+// directory just from a generic express.static() call — it reliably
+// bundles a file only when the exact path is referenced directly in
+// code like this. index.html works via express.static's automatic
+// directory-index behavior, but these two need an explicit route.
+app.get("/dashboard.html", (req, res) => res.sendFile(path.join(__dirname, "public", "dashboard.html")));
+app.get("/admin.html", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.get("/api/config", (req, res) => {
