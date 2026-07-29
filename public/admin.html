@@ -96,12 +96,36 @@
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="orders">الطلبات</button>
+      <button class="tab-btn" data-tab="inventory">المخزون</button>
       <button class="tab-btn" data-tab="servers">السيرفرات</button>
       <button class="tab-btn" data-tab="users">المستخدمين</button>
     </div>
 
     <div class="tab-panel active" id="tab-orders">
       <div id="ordersTableWrap"><div class="empty">جاري التحميل...</div></div>
+    </div>
+
+    <div class="tab-panel" id="tab-inventory">
+      <div class="add-server-card">
+        <div class="field">
+          <label>الباقة</label>
+          <select id="invPlan"></select>
+        </div>
+        <div class="field">
+          <label>IP السيرفر</label>
+          <input type="text" id="invIp" placeholder="51.20.14.88">
+        </div>
+        <div class="field">
+          <label>اليوزر</label>
+          <input type="text" id="invUsername" value="Administrator">
+        </div>
+        <div class="field">
+          <label>الباسورد</label>
+          <input type="text" id="invPassword" placeholder="كلمة السر">
+        </div>
+        <button class="btn small" id="invAddBtn" style="width:auto;">ضيف للمخزون</button>
+      </div>
+      <div id="inventoryTableWrap"><div class="empty">جاري التحميل...</div></div>
     </div>
 
     <div class="tab-panel" id="tab-servers">
@@ -211,7 +235,10 @@ function fmtDate(d) {
   return new Date(d).toLocaleString("ar-EG", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+let INVENTORY = [];
+
 async function loadOrders() {
+  await loadInventory();
   const res = await adminFetch("/admin/orders");
   const orders = await res.json();
   const wrap = document.getElementById("ordersTableWrap");
@@ -231,7 +258,13 @@ async function loadOrders() {
         <td>
           ${o.status === "pending_review" ? `
             <div class="row-actions">
-              <button class="btn small ok" onclick="approveOrderManual('${o.id}')">قبول + إدخال IP</button>
+              ${INVENTORY.length > 0 ? `
+                <select id="assign-${o.id}" style="width:auto; padding:6px 10px; font-size:12.5px;">
+                  ${INVENTORY.map((s) => `<option value="${s.id}">${s.publicIp} — ${s.planName}</option>`).join("")}
+                </select>
+                <button class="btn small ok" onclick="assignFromInventory('${o.id}')">عيّن من المخزون</button>
+              ` : ""}
+              <button class="btn small ghost" onclick="approveOrderManual('${o.id}')">إدخال IP يدوي</button>
               <button class="btn small danger" onclick="rejectOrder('${o.id}')">رفض</button>
             </div>` : ""}
         </td>
@@ -239,6 +272,71 @@ async function loadOrders() {
     `).join("")}
   </tbody></table>`;
 }
+
+async function assignFromInventory(orderId) {
+  const sel = document.getElementById(`assign-${orderId}`);
+  const serverId = sel.value;
+  if (!serverId) return;
+  const res = await adminFetch(`/admin/orders/${orderId}/assign`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ serverId }),
+  });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتعيّن السيرفر للعميل");
+  loadOrders(); loadServers(); loadInventory();
+}
+
+async function loadInventory() {
+  const res = await adminFetch("/admin/inventory");
+  INVENTORY = await res.json();
+  const wrap = document.getElementById("inventoryTableWrap");
+  if (!wrap) return;
+  if (INVENTORY.length === 0) { wrap.innerHTML = `<div class="empty">المخزون فاضي — ضيف سيرفرات فوق</div>`; return; }
+
+  wrap.innerHTML = `<table><thead><tr>
+    <th>الباقة</th><th>IP</th><th>اليوزر</th><th>الباسورد</th><th>أُضيف في</th><th></th>
+  </tr></thead><tbody>
+    ${INVENTORY.map((s) => `
+      <tr>
+        <td>${s.planName}</td>
+        <td class="mono">${s.publicIp}</td>
+        <td class="mono">${s.username}</td>
+        <td class="mono">${s.password}</td>
+        <td class="mono">${fmtDate(s.createdAt)}</td>
+        <td><button class="btn small danger" onclick="removeFromInventory('${s.id}')">حذف</button></td>
+      </tr>
+    `).join("")}
+  </tbody></table>`;
+}
+
+async function removeFromInventory(id) {
+  if (!confirm("متأكد؟")) return;
+  const res = await adminFetch(`/admin/inventory/${id}`, { method: "DELETE" });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتشال من المخزون");
+  loadInventory(); loadOrders();
+}
+
+document.getElementById("invAddBtn").addEventListener("click", async () => {
+  const planId = document.getElementById("invPlan").value;
+  const publicIp = document.getElementById("invIp").value.trim();
+  const username = document.getElementById("invUsername").value.trim();
+  const password = document.getElementById("invPassword").value.trim();
+  if (!planId || !publicIp || !username || !password) return showToast("املأ كل الخانات");
+
+  const res = await adminFetch("/admin/inventory/add", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ planId, publicIp, username, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتضاف للمخزون");
+  document.getElementById("invIp").value = "";
+  document.getElementById("invPassword").value = "";
+  loadInventory();
+});
 
 async function approveOrderManual(id) {
   const publicIp = prompt("الـ IP بتاع السيرفر (مثال: 51.20.14.88):");
@@ -349,8 +447,9 @@ async function loadUsers() {
 async function loadPlansForAddServer() {
   const res = await fetch(`${API}/plans`);
   const plans = await res.json();
-  const sel = document.getElementById("addServerPlan");
-  sel.innerHTML = plans.map((p) => `<option value="${p.id}">${p.name} — ${p.priceEGP} ج.م</option>`).join("");
+  const opts = plans.map((p) => `<option value="${p.id}">${p.name} — ${p.priceEGP} ج.م</option>`).join("");
+  document.getElementById("addServerPlan").innerHTML = opts;
+  document.getElementById("invPlan").innerHTML = opts;
 }
 
 document.getElementById("addServerBtn").addEventListener("click", async () => {
@@ -377,6 +476,7 @@ document.getElementById("addServerBtn").addEventListener("click", async () => {
 
 function loadAll() {
   loadOrders();
+  loadInventory();
   loadServers();
   loadUsers();
   loadPlansForAddServer();
