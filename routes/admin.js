@@ -3,7 +3,7 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { db } from "../db.js";
 import { requireAdmin } from "../services/auth.js";
-import { provisionForOrder, renewServer } from "../services/provision.js";
+import { provisionForOrder, provisionManual, renewServer } from "../services/provision.js";
 import { stopServer, startServer, getPublicIp, terminateServer } from "../services/aws.js";
 import { rateLimit } from "../services/rateLimit.js";
 
@@ -39,8 +39,36 @@ router.get("/orders", async (req, res) => {
   res.json(enriched);
 });
 
+// Admin confirms the money actually arrived AND provides the RDP
+// details by hand (no AWS involved) — this is the main path right now
+// since AWS isn't configured.
+router.post("/orders/:id/approve-manual", async (req, res) => {
+  const { publicIp, username, password } = req.body;
+  if (!publicIp || !username || !password) {
+    return res.status(400).json({ error: "الـ IP واليوزر والباسورد مطلوبين كلهم" });
+  }
+
+  const order = await db.find("orders", (o) => o.id === req.params.id);
+  if (!order) return res.status(404).json({ error: "الطلب غير موجود" });
+  if (order.status !== "pending_review") {
+    return res.status(400).json({ error: "الطلب ده اتراجع قبل كده" });
+  }
+
+  await db.update("orders", (o) => o.id === order.id, { status: "paid", approvedAt: new Date().toISOString() });
+
+  try {
+    const server = await provisionManual(order, { publicIp, username, password });
+    await db.update("orders", (o) => o.id === order.id, { status: "provisioned" });
+    res.json(server);
+  } catch (err) {
+    console.error("Admin manual approve failed:", err.message);
+    await db.update("orders", (o) => o.id === order.id, { status: "failed" });
+    res.status(500).json({ error: "حصل خطأ أثناء الحفظ" });
+  }
+});
+
 // Admin confirms the money actually arrived — this is what triggers
-// provisioning (or renewal) since payments are manual right now.
+// automatic AWS provisioning (or renewal). Only useful once AWS is set up.
 router.post("/orders/:id/approve", async (req, res) => {
   const order = await db.find("orders", (o) => o.id === req.params.id);
   if (!order) return res.status(404).json({ error: "الطلب غير موجود" });
@@ -153,6 +181,44 @@ router.post("/servers/:id/terminate", async (req, res) => {
 // Manually create + provision a server for a user without going through
 // the order/payment flow at all (e.g. a courtesy server, or a payment
 // that arrived outside the normal checkout).
+// Manually create a "ready" server for a user with hand-typed RDP
+// details, no AWS involved — used when there's no pending order at all
+// (e.g. a courtesy server, or a payment that arrived outside checkout).
+router.post("/servers/add-manual", async (req, res) => {
+  const { userId, planId, publicIp, username, password } = req.body;
+  if (!publicIp || !username || !password) {
+    return res.status(400).json({ error: "الـ IP واليوزر والباسورد مطلوبين كلهم" });
+  }
+  const user = await db.find("users", (u) => u.id === userId);
+  if (!user) return res.status(404).json({ error: "المستخدم غير موجود" });
+  const plan = await db.find("plans", (p) => p.id === planId);
+  if (!plan) return res.status(400).json({ error: "الباقة غير موجودة" });
+
+  const order = await db.insert("orders", {
+    id: nanoid(),
+    userId: user.id,
+    planId: plan.id,
+    amountEGP: plan.priceEGP,
+    status: "provisioned",
+    paymentProvider: "manual",
+    payerPhone: null,
+    renewServerId: null,
+    note: "created directly by admin",
+    createdAt: new Date().toISOString(),
+    approvedAt: new Date().toISOString(),
+  });
+
+  try {
+    const server = await provisionManual(order, { publicIp, username, password });
+    res.json(server);
+  } catch (err) {
+    console.error("Admin add-manual server failed:", err.message);
+    res.status(500).json({ error: "حصل خطأ أثناء الحفظ" });
+  }
+});
+
+// Same thing but through real AWS auto-provisioning — only useful once
+// AWS is set up.
 router.post("/servers/add", async (req, res) => {
   const { userId, planId } = req.body;
   const user = await db.find("users", (u) => u.id === userId);
