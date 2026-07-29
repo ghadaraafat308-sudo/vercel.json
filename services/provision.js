@@ -5,6 +5,36 @@ import { launchServer, pollUntilReady, startServer, getPublicIp } from "./aws.js
 import { notifyServerReady } from "./notify.js";
 
 /**
+ * Manual path: the admin already has a Windows RDP box ready (bought
+ * elsewhere, set up by hand, whatever) and just wants to hand it to a
+ * customer. No AWS call at all — the server record is created already
+ * "ready" with whatever IP/username/password the admin typed in.
+ */
+export async function provisionManual(order, { publicIp, username, password }) {
+  const plan = await db.find("plans", (p) => p.id === order.planId);
+  if (!plan) throw new Error(`Unknown plan for order ${order.id}`);
+
+  const server = await db.insert("servers", {
+    id: nanoid(),
+    orderId: order.id,
+    userId: order.userId,
+    planId: plan.id,
+    status: "ready",
+    instanceId: null, // no AWS instance behind this one
+    publicIp,
+    username,
+    password,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+
+  const user = await db.find("users", (u) => u.id === order.userId);
+  if (user) await notifyServerReady(user, server, plan);
+
+  return server;
+}
+
+/**
  * Called once a payment is confirmed (from the Paymob webhook).
  * Launches the AWS instance in the background so the webhook response
  * to Paymob isn't held up by a multi-minute Windows boot.
