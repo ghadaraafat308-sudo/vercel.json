@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { db } from "../db.js";
 import { requireAdmin } from "../services/auth.js";
 import { provisionForOrder, provisionManual, renewServer } from "../services/provision.js";
+import { notifyServerReady } from "../services/notify.js";
 import { stopServer, startServer, getPublicIp, terminateServer } from "../services/aws.js";
 import { rateLimit } from "../services/rateLimit.js";
 
@@ -37,6 +38,87 @@ router.get("/orders", async (req, res) => {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   res.json(enriched);
+});
+
+// ---------- Inventory (servers not yet assigned to a customer) ----------
+// Admin adds ready-made RDP boxes here ahead of time. When a customer's
+// order gets approved, one gets picked from this pool and handed to
+// them — instead of typing fresh IP/username/password every single time.
+router.get("/inventory", async (req, res) => {
+  const { servers, plans } = await db.read();
+  const plansById = Object.fromEntries(plans.map((p) => [p.id, p]));
+  const available = servers
+    .filter((s) => s.status === "available")
+    .map((s) => ({ ...s, planName: plansById[s.planId]?.name || s.planId }))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json(available);
+});
+
+router.post("/inventory/add", async (req, res) => {
+  const { planId, publicIp, username, password } = req.body;
+  if (!publicIp || !username || !password) {
+    return res.status(400).json({ error: "الـ IP واليوزر والباسورد مطلوبين كلهم" });
+  }
+  const plan = await db.find("plans", (p) => p.id === planId);
+  if (!plan) return res.status(400).json({ error: "الباقة غير موجودة" });
+
+  const server = await db.insert("servers", {
+    id: nanoid(),
+    orderId: null,
+    userId: null,
+    planId: plan.id,
+    status: "available", // sitting in stock, not sold yet
+    instanceId: null,
+    publicIp,
+    username,
+    password,
+    createdAt: new Date().toISOString(),
+    expiresAt: null,
+  });
+  res.json(server);
+});
+
+router.delete("/inventory/:id", async (req, res) => {
+  const server = await db.find("servers", (s) => s.id === req.params.id && s.status === "available");
+  if (!server) return res.status(404).json({ error: "السيرفر غير موجود في المخزون" });
+  const updated = await db.update("servers", (s) => s.id === server.id, {
+    status: "terminated",
+    terminatedAt: new Date().toISOString(),
+  });
+  res.json(updated);
+});
+
+// Admin confirms payment AND hands the customer a server already
+// sitting in the inventory pool — no typing required.
+router.post("/orders/:id/assign", async (req, res) => {
+  const { serverId } = req.body;
+  const order = await db.find("orders", (o) => o.id === req.params.id);
+  if (!order) return res.status(404).json({ error: "الطلب غير موجود" });
+  if (order.status !== "pending_review") {
+    return res.status(400).json({ error: "الطلب ده اتراجع قبل كده" });
+  }
+  const server = await db.find("servers", (s) => s.id === serverId && s.status === "available");
+  if (!server) return res.status(404).json({ error: "السيرفر ده مش متاح في المخزون" });
+
+  await db.update("orders", (o) => o.id === order.id, { status: "paid", approvedAt: new Date().toISOString() });
+
+  const updatedServer = await db.update("servers", (s) => s.id === server.id, {
+    orderId: order.id,
+    userId: order.userId,
+    status: "ready",
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+
+  await db.update("orders", (o) => o.id === order.id, { status: "provisioned" });
+
+  const user = await db.find("users", (u) => u.id === order.userId);
+  const plan = await db.find("plans", (p) => p.id === order.planId);
+  if (user && plan) {
+    await notifyServerReady(user, updatedServer, plan);
+  }
+
+  res.json(updatedServer);
 });
 
 // Admin confirms the money actually arrived AND provides the RDP
@@ -112,6 +194,7 @@ router.get("/servers", async (req, res) => {
   const plansById = byId(plans);
 
   const enriched = servers
+    .filter((s) => s.status !== "available") // those live in the inventory tab instead
     .map((s) => ({
       ...s,
       userEmail: usersById[s.userId]?.email || null,
