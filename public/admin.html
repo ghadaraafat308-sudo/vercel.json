@@ -114,6 +114,18 @@
           <label>الباقة</label>
           <select id="addServerPlan"></select>
         </div>
+        <div class="field">
+          <label>IP السيرفر</label>
+          <input type="text" id="addServerIp" placeholder="51.20.14.88">
+        </div>
+        <div class="field">
+          <label>اليوزر</label>
+          <input type="text" id="addServerUsername" value="Administrator">
+        </div>
+        <div class="field">
+          <label>الباسورد</label>
+          <input type="text" id="addServerPassword" placeholder="كلمة السر">
+        </div>
         <button class="btn small" id="addServerBtn" style="width:auto;">إنشاء</button>
       </div>
       <div id="serversTableWrap"><div class="empty">جاري التحميل...</div></div>
@@ -219,13 +231,31 @@ async function loadOrders() {
         <td>
           ${o.status === "pending_review" ? `
             <div class="row-actions">
-              <button class="btn small ok" onclick="approveOrder('${o.id}')">قبول</button>
+              <button class="btn small ok" onclick="approveOrderManual('${o.id}')">قبول + إدخال IP</button>
               <button class="btn small danger" onclick="rejectOrder('${o.id}')">رفض</button>
             </div>` : ""}
         </td>
       </tr>
     `).join("")}
   </tbody></table>`;
+}
+
+async function approveOrderManual(id) {
+  const publicIp = prompt("الـ IP بتاع السيرفر (مثال: 51.20.14.88):");
+  if (!publicIp) return;
+  const username = prompt("اليوزر (اكتب Administrator لو مش متأكد):", "Administrator");
+  if (!username) return;
+  const password = prompt("الباسورد:");
+  if (!password) return;
+
+  const res = await adminFetch(`/admin/orders/${id}/approve-manual`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ publicIp, username, password }),
+  });
+  const data = await res.json();
+  if (!res.ok) return showToast(data.error || "حصل خطأ");
+  showToast("اتقبل الطلب واتحفظت بيانات السيرفر");
+  loadOrders(); loadServers();
 }
 
 async function approveOrder(id) {
@@ -326,15 +356,22 @@ async function loadPlansForAddServer() {
 document.getElementById("addServerBtn").addEventListener("click", async () => {
   const userId = document.getElementById("addServerUser").value;
   const planId = document.getElementById("addServerPlan").value;
+  const publicIp = document.getElementById("addServerIp").value.trim();
+  const username = document.getElementById("addServerUsername").value.trim();
+  const password = document.getElementById("addServerPassword").value.trim();
   if (!userId || !planId) return;
-  showToast("جاري إنشاء السيرفر...");
-  const res = await adminFetch("/admin/servers/add", {
+  if (!publicIp || !username || !password) return showToast("لازم تملأ IP واليوزر والباسورد");
+
+  showToast("جاري الحفظ...");
+  const res = await adminFetch("/admin/servers/add-manual", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, planId }),
+    body: JSON.stringify({ userId, planId, publicIp, username, password }),
   });
   const data = await res.json();
   if (!res.ok) return showToast(data.error || "حصل خطأ");
-  showToast("بدأ تجهيز السيرفر — هياخد شوية دقايق");
+  showToast("السيرفر اتضاف");
+  document.getElementById("addServerIp").value = "";
+  document.getElementById("addServerPassword").value = "";
   loadServers();
 });
 
