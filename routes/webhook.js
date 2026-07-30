@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { db } from "../db.js";
 import { verifyWebhookSignature } from "../services/paymob.js";
-import { provisionForOrder, renewServer } from "../services/provision.js";
+import { renewServer } from "../services/provision.js";
 
 const router = Router();
 
@@ -23,16 +23,19 @@ router.post("/paymob", async (req, res) => {
   if (!order) return res.status(404).json({ error: "order not found" });
 
   if (payload.success === true || payload.success === "true") {
-    await db.update("orders", (o) => o.id === order.id, { status: "paid" });
-
     if (order.renewServerId) {
+      // Renewing an existing server doesn't need a human to pick
+      // anything — just extend the expiry (and restart it if it was
+      // suspended), so this stays fully automatic.
       const server = await db.find("servers", (s) => s.id === order.renewServerId);
       if (server) await renewServer(server);
+      await db.update("orders", (o) => o.id === order.id, { status: "provisioned" });
     } else {
-      await provisionForOrder(order);
+      // New order: payment is confirmed, but no server is auto-launched
+      // (AWS auto-provisioning isn't set up yet) — hand it to the admin
+      // to assign one from inventory or type in IP details by hand.
+      await db.update("orders", (o) => o.id === order.id, { status: "pending_review" });
     }
-
-    await db.update("orders", (o) => o.id === order.id, { status: "provisioned" });
   } else {
     await db.update("orders", (o) => o.id === order.id, { status: "failed" });
   }
