@@ -123,8 +123,13 @@
 
   /* PLANS */
   .plans-row{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:56px;}
+  .os-tabs{display:flex; gap:8px; margin-bottom:20px;}
+  .os-tab{background:var(--bg-panel); border:1px solid var(--line); color:var(--text-muted); padding:9px 20px; border-radius:8px; font-family:inherit; font-size:14px; cursor:pointer;}
+  .os-tab.active{border-color:var(--accent); color:var(--text); background:var(--bg-panel-2);}
   @media (max-width:760px){.plans-row{grid-template-columns:1fr;}}
-  .plan-card{background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:22px;}
+  .plan-card{background:var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:22px; position:relative;}
+  .plan-card.featured{border:2px solid var(--accent);}
+  .popular-badge{position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--accent); color:#042C53; font-size:12px; padding:3px 14px; border-radius:20px; white-space:nowrap;}
   .plan-card h3{font-family:'Reem Kufi'; font-size:18px; margin-bottom:4px;}
   .plan-card .price{font-family:'JetBrains Mono'; color:var(--accent); font-size:20px; margin:10px 0; direction:ltr;}
   .plan-card ul{list-style:none; font-size:13px; color:var(--text-muted); margin-bottom:16px;}
@@ -294,7 +299,11 @@
 <div class="wrap">
   <div id="appView" style="display:none;">
     <h1>الباقات المتاحة</h1>
-    <p class="sub">اختار باقة وابدأ الدفع بفودافون كاش أو انستاباي.</p>
+    <p class="sub">اختار نظام التشغيل والباقة، وابدأ الدفع بفودافون كاش أو انستاباي.</p>
+    <div class="os-tabs" id="osTabs">
+      <button class="os-tab active" data-os="windows">Windows</button>
+      <button class="os-tab" data-os="linux">Linux</button>
+    </div>
     <div class="plans-row" id="plansRow"></div>
 
     <h1>سيرفراتي</h1>
@@ -306,10 +315,8 @@
 <div class="modal-backdrop" id="checkoutModal">
   <div class="modal">
     <h3 class="display" id="checkoutPlanName">تأكيد الطلب</h3>
-    <p class="sub" style="color:var(--text-muted); font-size:13.5px; margin-bottom:18px;">هيتم إرسال طلب دفع لرقم محفظتك.</p>
-    <label>رقم المحفظة (فودافون كاش / انستاباي)</label>
-    <input type="tel" id="checkoutPhone" placeholder="01xxxxxxxxx">
-    <button class="btn" id="confirmCheckoutBtn">تأكيد وادفع</button>
+    <p class="sub" style="color:var(--text-muted); font-size:13.5px; margin-bottom:18px;">هتتنقل لصفحة دفع آمنة بالفيزا أو الماستركارد.</p>
+    <button class="btn" id="confirmCheckoutBtn">الدفع بالكارت</button>
     <button class="btn secondary" id="cancelCheckoutBtn">إلغاء</button>
     <div id="checkoutMsg"></div>
   </div>
@@ -524,12 +531,21 @@ async function authedFetch(url, opts = {}) {
   return fetch(url, opts);
 }
 
+let allPlans = [];
+let selectedOs = "windows";
+
 async function loadPlans() {
   const res = await fetch(`${API}/plans`);
-  const plans = await res.json();
+  allPlans = await res.json();
+  renderPlans();
+}
+
+function renderPlans() {
   const row = document.getElementById("plansRow");
+  const plans = allPlans.filter((p) => (p.os || "windows") === selectedOs);
   row.innerHTML = plans.map(p => `
-    <div class="plan-card">
+    <div class="plan-card${p.name === "Pro" ? " featured" : ""}">
+      ${p.name === "Pro" ? `<div class="popular-badge">الأكثر طلبًا</div>` : ""}
       <h3>${p.name}</h3>
       <div class="price">${p.priceEGP} ج.م / شهريًا</div>
       <ul>
@@ -545,6 +561,15 @@ async function loadPlans() {
     btn.addEventListener("click", () => openCheckout(btn.dataset.plan, btn.dataset.name));
   });
 }
+
+document.querySelectorAll(".os-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".os-tab").forEach((t) => t.classList.remove("active"));
+    tab.classList.add("active");
+    selectedOs = tab.dataset.os;
+    renderPlans();
+  });
+});
 
 function openCheckout(planId, planName, renewServerId) {
   selectedPlan = planId;
@@ -562,15 +587,13 @@ document.getElementById("cancelCheckoutBtn").addEventListener("click", () => {
 });
 
 document.getElementById("confirmCheckoutBtn").addEventListener("click", async () => {
-  const phoneNumber = document.getElementById("checkoutPhone").value;
   const msg = document.getElementById("checkoutMsg");
-  if (!phoneNumber) { return; }
   msg.style.display = "block";
-  msg.textContent = "جاري إرسال طلب الدفع...";
+  msg.textContent = "جاري تجهيز صفحة الدفع...";
   try {
     const res = await authedFetch(`${API}/checkout`, {
       method: "POST", headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ planId: selectedPlan, phoneNumber, renewServerId: selectedRenewServerId })
+      body: JSON.stringify({ planId: selectedPlan, renewServerId: selectedRenewServerId })
     });
     const data = await res.json();
     if (!res.ok) { msg.textContent = data.error || "حصل خطأ في الدفع"; return; }
@@ -578,7 +601,7 @@ document.getElementById("confirmCheckoutBtn").addEventListener("click", async ()
       msg.textContent = "افتح رابط الدفع في التاب الجديد لتأكيد العملية...";
       window.open(data.redirectUrl, "_blank");
     } else {
-      msg.textContent = data.message || "تم إرسال طلب الدفع لمحفظتك، أكّده من تطبيق الموبايل.";
+      msg.textContent = data.message || "تم إرسال الطلب.";
     }
     setTimeout(loadServers, 4000);
   } catch { msg.textContent = "تعذر الاتصال بالسيرفر"; }
@@ -596,7 +619,10 @@ async function loadServers() {
   }
 
   const statusLabel = { ready: "شغال", provisioning: "بيتجهز", suspended: "متوقف مؤقتًا", failed: "فشل", terminated: "اتمسح" };
-  const planNames = { starter: "Starter", pro: "Pro", business: "Business" };
+  const planNames = {
+    starter: "Starter", pro: "Pro", business: "Business",
+    "linux-starter": "Starter (Linux)", "linux-pro": "Pro (Linux)", "linux-business": "Business (Linux)",
+  };
 
   list.innerHTML = servers.map(s => `
     <div class="server-card">
