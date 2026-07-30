@@ -18,7 +18,7 @@
 import axios from "axios";
 import crypto from "crypto";
 
-const BASE_URL = "https://accept.paymob.com/api";
+const BASE_URL = "https://accept-alpha.paymob.com/api";
 
 export async function authenticate() {
   const { data } = await axios.post(`${BASE_URL}/auth/tokens`, {
@@ -50,6 +50,28 @@ export async function createPaymentKey({ authToken, order, amountCents, billingD
     integration_id: process.env.PAYMOB_INTEGRATION_ID_WALLET,
   });
   return data.token;
+}
+
+export async function createCardPaymentKey({ authToken, order, amountCents, billingData }) {
+  const { data } = await axios.post(`${BASE_URL}/acceptance/payment_keys`, {
+    auth_token: authToken,
+    amount_cents: amountCents,
+    expiration: 3600,
+    order_id: order.id,
+    billing_data: billingData,
+    currency: "EGP",
+    integration_id: process.env.PAYMOB_INTEGRATION_ID_CARD,
+  });
+  return data.token;
+}
+
+/**
+ * The card flow doesn't push a wallet prompt — instead the customer is
+ * sent to Paymob's hosted iframe (card number / expiry / CVV form),
+ * then redirected back to our site once they finish.
+ */
+export function buildCardIframeUrl(paymentToken) {
+  return `${BASE_URL}/acceptance/iframes/${process.env.PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`;
 }
 
 /**
@@ -99,6 +121,42 @@ export async function startWalletCheckout({ order, plan, phoneNumber, customer }
 
   const result = await payWithWallet({ paymentToken, phoneNumber });
   return result;
+}
+
+/**
+ * High-level helper for the card flow: returns an iframe URL the
+ * frontend opens/redirects to for the customer to type card details.
+ */
+export async function startCardCheckout({ order, plan, customer }) {
+  const authToken = await authenticate();
+  const amountCents = plan.priceEGP * 100;
+
+  const paymobOrder = await createOrder({
+    authToken,
+    amountCents,
+    merchantOrderId: order.id,
+  });
+
+  const paymentToken = await createCardPaymentKey({
+    authToken,
+    order: paymobOrder,
+    amountCents,
+    billingData: {
+      first_name: customer.firstName || "NA",
+      last_name: customer.lastName || "NA",
+      email: customer.email,
+      phone_number: customer.phone || "01000000000",
+      apartment: "NA",
+      floor: "NA",
+      street: "NA",
+      building: "NA",
+      city: "Cairo",
+      country: "EG",
+      state: "NA",
+    },
+  });
+
+  return buildCardIframeUrl(paymentToken);
 }
 
 /**
