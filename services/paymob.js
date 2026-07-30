@@ -18,7 +18,7 @@
 import axios from "axios";
 import crypto from "crypto";
 
-const BASE_URL = "https://accept-alpha.paymob.com/api";
+const BASE_URL = "https://accept.paymobsolutions.com/api";
 
 export async function authenticate() {
   const { data } = await axios.post(`${BASE_URL}/auth/tokens`, {
@@ -70,8 +70,13 @@ export async function createCardPaymentKey({ authToken, order, amountCents, bill
  * sent to Paymob's hosted iframe (card number / expiry / CVV form),
  * then redirected back to our site once they finish.
  */
+// The iframe (hosted card-details page) lives on a different subdomain
+// than the main API — confirmed directly from this account's own
+// Paymob dashboard (Settings → Iframes → Iframe Link).
+const IFRAME_BASE_URL = "https://accept-alpha.paymob.com/api";
+
 export function buildCardIframeUrl(paymentToken) {
-  return `${BASE_URL}/acceptance/iframes/${process.env.PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`;
+  return `${IFRAME_BASE_URL}/acceptance/iframes/${process.env.PAYMOB_IFRAME_ID}?payment_token=${paymentToken}`;
 }
 
 /**
